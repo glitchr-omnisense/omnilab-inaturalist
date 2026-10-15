@@ -1,0 +1,46 @@
+{
+    "name": "omnilab/inaturalist",
+    "type": "library",
+    "description": "Omnilab iNaturalist: a taxon of iNaturalist by its id or a name it matches - its rank, common name in a language, iconic group, IUCN status, lineage, Wikipedia summary, observation count, default photo with its licence and attribution, its parent as a related thing - a search of its names, and the observations of a place and a period (research grade by default; by taxon, licence, quality grade), each with its time and place, its taxon related and its licence, through the iNaturalist API (v1 for taxa, v2 for observations), no key needed.",
+    "keywords": [
+        "science",
+        "biodiversity",
+        "taxonomy",
+        "inaturalist",
+        "citizen-science",
+        "observations",
+        "occurrences",
+        "omnilab"
+    ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Marco Meyer",
+            "email": "marco.meyer@glitchr.io"
+        }
+    ],
+    "require": {
+        "php": ">=8.2",
+        "glitchr/omnilab": "^1.0@dev",
+        "symfony/http-client": "^6.4|^7.0|^8.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Omnilab\\INaturalist\\": ""
+        },
+        "exclude-from-classmap": [
+            "/Tests/"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Omnilab\\INaturalist\\Tests\\": "Tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    }
+}
