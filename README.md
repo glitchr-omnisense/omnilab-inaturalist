@@ -1,6 +1,6 @@
 # omnilab/inaturalist
 
-iNaturalist for [omniscient/omnilab](https://github.com/glitchr-studio/omnilab): a taxon by its id or a
+iNaturalist for [omnisense/omnilab](https://github.com/glitchr-omnisense/omnilab): a taxon by its id or a
 name iNaturalist matches - its rank, common name in a language, iconic group, IUCN Red List
 category, lineage, Wikipedia summary, number of observations, its default photo with its licence
 and attribution; its parent as a related thing; a search of its names. And the observations of a
