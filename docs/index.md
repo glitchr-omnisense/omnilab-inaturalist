@@ -1,5 +1,10 @@
 # omnilab/inaturalist
 
+The iNaturalist API (`https://api.inaturalist.org/`, versions 1 and 2) for
+[omnisense/omnilab](https://github.com/glitchr-omnisense/omnilab): taxa by id or name - common
+name, IUCN status, lineage, default photo and its licence - as entities; the observations of a
+place and a period, research grade by default, each with its licence, as occurrences. No key.
+
 ## Installation
 
 ```sh
@@ -17,6 +22,52 @@ $inaturalist = (new INaturalistSourceFactory($httpClient))->create([
 ```
 
 With the Symfony bundle, the factory is registered as `inaturalist` (see the core's docs).
+
+## Credentials
+
+None for reading: the iNaturalist API takes no key. It asks for 60 calls a minute at most (it
+throttles at 100) and 10,000 a day, and blocks without notice a use it does not recognise: give
+`mailto`.
+
+## Options
+
+The factory's options, with the defaults it applies (`INaturalistSourceFactory`):
+
+| Option | Type | Default | Required | Effect |
+|---|---|---|---|---|
+| `locale` | `string` | `en` | no | the language of the common names (and of a taxon's Wikipedia summary) |
+| `quality_grade` | `string` | `research` | no | the observations answered when a query does not say: `research`, `needs_id`, `casual`, or `any` |
+| `radius_km` | `float` | `10` | no | the circle around a `Point`, in kilometres, for `occurrences()` when the query gives no radius |
+| `mailto` | `?string` | null | no | a contact address, in the User-Agent: iNaturalist blocks, without notice, a use it does not recognise |
+| `user_agent` | `?string` | null | no | the whole User-Agent, in place of the one made from `mailto` |
+| `throttle` | `float` | `1` | no | seconds left between two calls: iNaturalist asks for 60 a minute at most |
+| `base_uri` | `string` | `https://api.inaturalist.org/` | no | the API the source calls |
+
+Per call, `occurrences()` reads the filters `OccurrenceQuery::TAXON`, `OccurrenceQuery::LICENSE`
+and `INaturalistSource::QUALITY_GRADE`; any other key is refused before any call
+([Occurrences](#occurrences)).
+
+## Capabilities
+
+`capabilities()` answers `entity`, `search`, `occurrences`, `area`; an operation it does not answer throws `NotSupportedException` before any call.
+
+| Capability | Supported | |
+|---|---|---|
+| `entity` | yes | a taxon id (`41964`, `inaturalist:`, its page) or a name, or an observation (`inaturalist.observation:`); another scheme refused before any call |
+| `search` | yes | iNaturalist's taxa by name, 200 a page at most, 10,000 deep, with a `total` |
+| `series` | no |  |
+| `products` | no |  |
+| `occurrences` | yes | the placed observations of a box, a circle or the world, research grade by default, by taxon and licence; unsorted pages without a depth limit, sorted ones 10,000 deep; 200 a page at most |
+| `datasets` | no |  |
+| `jobs` | no |  |
+| `open` | no |  |
+| `structure` | no |  |
+| `cross_references` | no | none: iNaturalist gives no identifier of another base for a taxon; an observation is published to GBIF under its own id |
+| `forecast` | no |  |
+| `historical` | no |  |
+| `area` | yes | a `BBox` (across the antimeridian too) or a `Point` and a radius |
+| `station` | no |  |
+| `cloud_cover` | no |  |
 
 ## Which API
 
@@ -143,6 +194,60 @@ Answered on 2026-10-15 (the core's `docs/merging.md` gives them whole):
   `$collector->follow($occurrence, 1, ['inaturalist'])` reads it here in one call - its quality
   grade and identifications beside GBIF's fields.
 
+## Example
+
+```php
+<?php
+
+require __DIR__.'/vendor/autoload.php';
+
+use Omnilab\INaturalist\INaturalistSourceFactory;
+use Omnilab\Model\Point;
+use Omnilab\Source\OccurrenceQuery;
+use Symfony\Component\HttpClient\HttpClient;
+
+$inaturalist = (new INaturalistSourceFactory(HttpClient::create()))->create(['mailto' => 'you@example.org', 'locale' => 'fr']);
+
+$lion = $inaturalist->entity('Panthera leo');
+echo $lion->label, ' (', $lion->id, '): ', $lion->value('common_name'), ', ', $lion->value('iucn_status'), ', ', $lion->value('observations_count'), " observations\n";
+echo '  photo ', $lion->image, ' (', $lion->value('image_license'), ")\n";
+
+// The research-grade lions within 100 km of Skukuza in October 2026, under an open licence.
+$page = $inaturalist->occurrences(new OccurrenceQuery(new Point(-24.99, 31.59), new DateTimeImmutable('2026-10-01'), new DateTimeImmutable('2026-10-26'), [OccurrenceQuery::TAXON => 'Panthera leo', OccurrenceQuery::LICENSE => ['cc0', 'cc-by', 'cc-by-nc']], radius: 100, limit: 3));
+printf("%d observations; the latest added %d:\n", $page->total, count($page));
+foreach ($page as $observation) {
+    echo '  ', $observation->time->format('Y-m-d'), '  ', $observation->label, '  ', $observation->value('license'), "\n";
+}
+```
+
+```
+Panthera leo (inaturalist:41964): Lion, Vulnerable (VU), 25789 observations
+  photo https://inaturalist-open-data.s3.amazonaws.com/photos/9225318/medium.jpg (cc-by-nc-nd)
+12 observations; the latest added 3:
+  2026-10-26  Panthera leo melanochaita - Ehlanzeni, ZA-MP, ZA, 2026-10-26  cc-by-nc
+  2026-10-24  Panthera leo melanochaita - Ehlanzeni, ZA-MP, ZA, 2026-10-24  cc-by
+  2026-10-18  Panthera leo melanochaita - Ehlanzeni, ZA-MP, ZA, 2026-10-18  cc-by-nc
+```
+
+(as answered on 2026-10-27: three calls, a second apart; the locale `fr` gave the lion's common name as iNaturalist holds it)
+
+```yaml
+# config/packages/omnilab.yaml
+omnilab:
+    sources:
+        inaturalist: { factory: inaturalist, options: { mailto: '%env(OMNILAB_MAILTO)%', locale: en, quality_grade: research } }
+```
+
+## Errors
+
+Every call goes through `HttpSource`: a 404 or a 410 (and a 204) is null - an empty page for a list -; a 429 is a `RateLimitedException` (`retryAfter` from `Retry-After`); a 5xx, a time-out or a host that does not answer an `UnavailableException`; any other 4xx a `ProviderException` with its `status` and what the service said; an answer that is not JSON a `ProviderException`, a web page answered for JSON an `UnavailableException`.
+
+Before any call (`NotSupportedException`): an identifier of another scheme, a filter or a sort not
+read, a taxon of another scheme, a page past 10,000 deep of a search or a sorted query; a quality
+grade or a licence iNaturalist does not have, a cursor that is not this source's
+(`\InvalidArgumentException`). iNaturalist's errors (`error` in version 1, `errors` in version 2)
+are read into the `ProviderException`'s message.
+
 ## Verified, and not
 
 Against the real service on 2026-10-15, without a key: the lion by its id, its page, its name, its
@@ -157,5 +262,19 @@ two halves (256 and 42); 28 within 10 km of Strasbourg from 2026-10-01 to 10-07;
 by its number and an unknown one; iNaturalist's error past 10,000 deep. The fixtures in
 `Tests/Fixtures/` are its answers.
 
+Again on 2026-10-27: the lion by its name (in French), its openly licensed observations within
+100 km of Skukuza in October 2026 (twelve; the example above).
+
 Not verified: iNaturalist's 429 and its blocks (none met: the handling of a 429 is the core's); an
 inactive taxon (`accepted`); a casual observation without a day.
+
+## Responsibility
+
+This package is an independent, unofficial client: it is not affiliated with, endorsed by or
+sponsored by iNaturalist. Its API is subject to iNaturalist's Terms of Service and is "intended to
+support application development, not data scraping"; each observation and photo keeps its owner's
+licence and attribution; for bulk data iNaturalist points to its exports and GBIF, as the README's
+[Terms of use](https://github.com/glitchr-omnisense/omnilab-inaturalist#terms-of-use) says.
+Whoever runs the package is responsible for complying with them and for any use made of what it
+returns: see the README's
+[Responsibility](https://github.com/glitchr-omnisense/omnilab-inaturalist#responsibility) section.
