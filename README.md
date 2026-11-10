@@ -65,6 +65,17 @@ under CC0, CC BY and CC BY-NC go there), not to this API.
 
 See [docs/](docs/index.md) for what is read, how it maps, and what iNaturalist does not give here.
 
+## Usage policy
+
+Declared as data in [`policy.json`](policy.json) (read at https://www.inaturalist.org/pages/api+recommended+practices on 2026-11-10), and honoured on every request by the
+core: a limit reached waits when its window ends within `max_wait` seconds, else the request is not
+sent ([Usage policies](https://github.com/glitchr-omnisense/omnilab/blob/1.x/docs/policies.md)).
+
+- Limits: 60 a minute; 10,000 a day.
+- Licence: Per observation and per photo: CC0-1.0, CC-BY-4.0, CC-BY-NC-4.0 (the default), other CC variants, or all rights reserved; commercial use: unknown.
+- Credit: required: iNaturalist, with each observer and the licence of each observation and photo (https://www.inaturalist.org).
+- Needs: nothing.
+
 ## Responsibility
 
 This package is an independent, unofficial client: it is not affiliated with, endorsed by or
