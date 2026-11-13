@@ -45,6 +45,34 @@ whose items carry the iNaturalist taxon (P3151). With GBIF and Wikidata configur
 `collect('inaturalist', '41964', 2)` reaches Wikidata, then GBIF and NCBI. A GBIF occurrence that is
 an iNaturalist observation carries its number: `$collector->follow($occurrence)` reads it here.
 
+## Install and a first call
+
+```sh
+composer require omnilab/inaturalist
+```
+
+A real call, with no account and no key: the lion in iNaturalist. `mailto` is your address, sent in
+the User-Agent so that the service can reach you before it blocks a caller; the source keeps to the
+limits its [`policy.json`](policy.json) declares.
+
+```php
+<?php
+
+require __DIR__.'/vendor/autoload.php';
+
+use Omnilab\INaturalist\INaturalistSourceFactory;
+
+$inaturalist = (new INaturalistSourceFactory())->create(['mailto' => 'you@example.org']);   // your address, in the User-Agent
+$lion = $inaturalist->entity('41964');
+echo $lion->label, ' (', $lion->value('common_name'), '), ', $lion->value('iucn_status'), "\n";
+```
+
+Its output on 2026-11-13:
+
+```
+Panthera leo (Lion), Vulnerable (VU)
+```
+
 ## Which API
 
 Version 1 for the taxa (`/v1/taxa`: a taxon whole, ancestors and conservation statuses, in one
